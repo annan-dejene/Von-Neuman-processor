@@ -1,0 +1,66 @@
+$date
+	Mon Oct 20 19:21:57 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module ALU_tb $end
+$var wire 16 ! result [15:0] $end
+$var reg 16 " num1 [15:0] $end
+$var reg 16 # num2 [15:0] $end
+$var reg 4 $ opcode [3:0] $end
+$scope module myALU $end
+$var wire 16 % num1 [15:0] $end
+$var wire 16 & num2 [15:0] $end
+$var wire 4 ' opcode [3:0] $end
+$var reg 16 ( result [15:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+bx (
+bx '
+bx &
+bx %
+bx $
+bx #
+bx "
+bx !
+$end
+#10
+b1100 !
+b1100 (
+b1 $
+b1 '
+b11 #
+b11 &
+b1001 "
+b1001 %
+#30
+b110 !
+b110 (
+b10 $
+b10 '
+#40
+b1 !
+b1 (
+b11 $
+b11 '
+#50
+b1011 !
+b1011 (
+b100 $
+b100 '
+#60
+b1010 !
+b1010 (
+b101 $
+b101 '
+#70
