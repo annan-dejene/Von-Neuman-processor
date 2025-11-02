@@ -10,7 +10,7 @@ module memory(clock, enable, writeEnable, address, writeData, readData);
     integer i;
     initial begin
         for (i = 0; i < 65536; i = i + 1) // first clear all to 0
-            mem[i] = 16h'0000;
+            mem[i] = 16'h0000;
       $readmemh("program.hex", mem);  // Then load 16-bit words, one per line
     end
 
@@ -20,7 +20,7 @@ module memory(clock, enable, writeEnable, address, writeData, readData);
             if (writeEnable)
                 mem[address] <= writeData;
             else
-                readData = [address];
+                readData <= mem[address];
         end
     end
     

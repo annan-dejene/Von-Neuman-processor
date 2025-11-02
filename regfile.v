@@ -1,6 +1,6 @@
 // 8 registers R0-R7, 16 bits each so 8x16 register file
 // read from the regiser so for reading we output the data to be read for the specified register (to be input to ALU for eg)
-// write to the registers so for writing we accept as an input the data to write (writeData) as a result of ALU computation for eg
+// write to the registers so for writing we accept as an input the data to write (writeData) [as a result of ALU computation - to update reg for eg]
 // if write enable == 1 then we are trying to write something into a particular register so we accept that value and put it into the specified register
 module regfile(regSource1, regSource2, regDestination, writeData, data1, data2, writeEnable, clock, reset);
     input clock, reset, writeEnable;
@@ -36,7 +36,7 @@ module regfile(regSource1, regSource2, regDestination, writeData, data1, data2, 
         If that is the instruction we have for example, the control unit will be requesting to get/read the values of registers R1 and R2 to
         be provided as inputs to the ALU first. (regSource1=3'b001 and regSource2=3'b010 and writeEnable=0)
         This will mean data1 will have value of R1 (old val before addition operation) and data2=R2
-        the operation will be carried out by the ALU and the result written(writeData=R1+R2 and writeEnable=1) back to R1. 
+        the operation will be carried out by the ALU and the result=R1+R2 written(writeData=result and writeEnable=1) back to R1. 
     */
 
 
