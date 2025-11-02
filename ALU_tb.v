@@ -28,6 +28,9 @@ module ALU_tb;
         opcode = 4'b0101; // xor
 
         #10
+        opcode = 4'b0110; // not
+
+        #10
         $finish;
     
     end

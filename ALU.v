@@ -13,7 +13,7 @@ module ALU(num1, num2, opcode, result);
             4'b0011: result = num1 & num2; // AND
             4'b0100: result = num1 | num2;  // OR
             4'b0101: result = num1 ^ num2;  // XOR
-            4'b0110: result = ~num1; // NOT first register
+            4'b0110: result = ~num1; // NOT the first register
             4'b0111: result = 0;            // Clear
 
             default: result = num1;         // default case incase opcode is not any of the above -- bypass simply give num1
