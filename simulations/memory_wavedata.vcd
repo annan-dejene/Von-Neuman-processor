@@ -1,0 +1,103 @@
+$date
+	Mon Nov  3 01:21:49 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module memory_tb $end
+$var wire 16 ! readData [15:0] $end
+$var reg 16 " address [15:0] $end
+$var reg 1 # clock $end
+$var reg 1 $ enable $end
+$var reg 16 % writeData [15:0] $end
+$var reg 1 & writeEnable $end
+$scope module myMemory $end
+$var wire 16 ' address [15:0] $end
+$var wire 1 # clock $end
+$var wire 1 $ enable $end
+$var wire 16 ( writeData [15:0] $end
+$var wire 1 & writeEnable $end
+$var reg 16 ) readData [15:0] $end
+$var integer 32 * i [31:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b10000000000000000 *
+bx )
+bx (
+bx '
+0&
+bx %
+1$
+1#
+bx "
+bx !
+$end
+#5
+0#
+#10
+b110010000000101 !
+b110010000000101 )
+1#
+b0 "
+b0 '
+#15
+0#
+#20
+b110011000000011 !
+b110011000000011 )
+1#
+b1 "
+b1 '
+#25
+0#
+#30
+b1101000100011 !
+b1101000100011 )
+1#
+b10 "
+b10 '
+#35
+0#
+#40
+b111000000000000 !
+b111000000000000 )
+1#
+b11 "
+b11 '
+#45
+0#
+#50
+1#
+1&
+#55
+0#
+#60
+1#
+b1111101000101101 %
+b1111101000101101 (
+b101 "
+b101 '
+#65
+0#
+#70
+b1111101000101101 !
+b1111101000101101 )
+1#
+0&
+#75
+0#
+#80
+1#
+#85
+0#
+#90
+1#
