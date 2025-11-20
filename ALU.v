@@ -5,8 +5,6 @@ module ALU(num1, num2, opcode, result, zero);
     output reg [15:0] result;
     output zero;
 
-    // wire zero, carry, overflow, negative;
-
     always @* begin
         case (opcode)
             4'b0001: result = num1 + num2; // ADD
@@ -18,7 +16,7 @@ module ALU(num1, num2, opcode, result, zero);
             default: result = num1;         // default case incase opcode is not any of the above -- bypass simply give num1
         endcase 
     end
-    
+
     assign zero = (result == 0);
 
 
