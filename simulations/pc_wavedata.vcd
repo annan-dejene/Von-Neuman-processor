@@ -1,5 +1,5 @@
 $date
-	Thu Nov 20 19:49:49 2025
+	Thu Nov 20 20:01:01 2025
 $end
 $version
 	Icarus Verilog
@@ -17,6 +17,9 @@ $var wire 1 " clock $end
 $var wire 8 % next_address [7:0] $end
 $var wire 1 $ reset $end
 $var reg 8 & current_address [7:0] $end
+$scope task log_pc_change $end
+$var integer 32 ' f_pc_log [31:0] $end
+$upscope $end
 $upscope $end
 $upscope $end
 $enddefinitions $end
@@ -25,6 +28,7 @@ $dumpall
 $end
 #0
 $dumpvars
+b10000000000000000000000000000011 '
 b0 &
 b11111111 %
 1$
