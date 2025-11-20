@@ -7,7 +7,7 @@ module ALU(num1, num2, opcode, result, zero);
 
     // wire zero, carry, overflow, negative;
 
-    always @(num1 or num2 or opcode)
+    always @* begin
         case (opcode)
             4'b0001: result = num1 + num2; // ADD
             4'b0010: result = num1 - num2; // SUB
@@ -17,7 +17,8 @@ module ALU(num1, num2, opcode, result, zero);
             4'b0110: result = ~num1; // NOT the first register
             default: result = num1;         // default case incase opcode is not any of the above -- bypass simply give num1
         endcase 
-
+    end
+    
     assign zero = (result == 0);
 
 
