@@ -118,6 +118,7 @@ module control_unit (
 
             // ------- IF2: latch IR, commit PC <- PC+1 -------
             S_IF2: begin
+                MemRead  = 1'b1;
                 IRload   = 1'b1;        // IR <- mem.out
                 PCWrite  = 1'b1;        // PC <- ALUOut (PC+1)
                 PCSel    = 2'b00;
@@ -173,31 +174,34 @@ module control_unit (
 
             // ------- R-type execute -------
             S_EX_R: begin
-                ALUSrcA    = 2'b01;                 // A
-                ALUSrcB    = 2'b00;                 // B
+                // MemRead    = 1'b1;   // REMOVE: no memory access in R-execute
+                ALUSrcA    = 2'b01;     // A
+                ALUSrcB    = 2'b00;     // B
                 case (opcode)
-                    OP_ADD: ALUOp = ALU_ADD;
-                    OP_SUB: ALUOp = ALU_SUB;
-                    OP_AND: ALUOp = ALU_AND;
-                    OP_OR : ALUOp = ALU_OR;
-                    OP_XOR: ALUOp = ALU_XOR;
-                    default: ALUOp = ALU_ADD;
+                OP_ADD: ALUOp = ALU_ADD;
+                OP_SUB: ALUOp = ALU_SUB;
+                OP_AND: ALUOp = ALU_AND;
+                OP_OR : ALUOp = ALU_OR;
+                OP_XOR: ALUOp = ALU_XOR;
+                default: ALUOp = ALU_ADD;
                 endcase
-                ALUOutLoad = 1'b1;                  // latch result
+                ALUOutLoad = 1'b1;
                 next       = S_WB_R;
             end
 
             // ------- R-type write-back -------
             S_WB_R: begin
-                RegWrite = 1'b1;                    // write regfile from ALUOut
+                // MemRead  = 1'b1;     // REMOVE
+                RegWrite = 1'b1;        // ALUOut -> RF
                 MemToReg = 1'b0;
                 next     = S_IF1;
             end
 
             // ------- LDI execute -------
             S_EX_LDI: begin
-                ALUSrcA    = 2'b10;                 // 0 (don't care)
-                ALUSrcB    = 2'b10;                 // imm
+                // MemRead    = 1'b1;   // REMOVE
+                ALUSrcA    = 2'b10;     // 0
+                ALUSrcB    = 2'b10;     // imm
                 ALUOp      = ALU_PASSB;
                 ALUOutLoad = 1'b1;
                 next       = S_WB_LDI;
@@ -205,16 +209,17 @@ module control_unit (
 
             // ------- LDI write-back -------
             S_WB_LDI: begin
+                // MemRead  = 1'b1;     // REMOVE
                 RegWrite = 1'b1;
-                MemToReg = 1'b0;                    // ALUOut
+                MemToReg = 1'b0;        // ALUOut
                 next     = S_IF1;
             end
 
-            // ------- LD effective address (absolute for now) -------
+            // ------- LD effective address -------
             S_EA_LD: begin
-                // ALUOut <- imm
-                ALUSrcA    = 2'b10;                 // 0
-                ALUSrcB    = 2'b10;                 // imm
+                // no MemRead here (address calc only)
+                ALUSrcA    = 2'b10;     // 0
+                ALUSrcB    = 2'b10;     // imm
                 ALUOp      = ALU_PASSB;
                 ALUOutLoad = 1'b1;
                 next       = S_MEM_LD;
@@ -222,24 +227,24 @@ module control_unit (
 
             // ------- LD memory read -------
             S_MEM_LD: begin
-                AddrSel = 1'b1;                     // mem.addr <= ALUOut
-                MemRead = 1'b1;
-                MDRload = 1'b1;                     // capture mem data
+                AddrSel = 1'b1;         // mem.addr <= ALUOut
+                MemRead = 1'b1;         // <-- keep
+                MDRload = 1'b1;
                 next    = S_WB_LD;
             end
 
             // ------- LD write-back -------
             S_WB_LD: begin
                 RegWrite = 1'b1;
-                MemToReg = 1'b1;                    // from MDR
+                MemToReg = 1'b1;        // MDR -> RF
                 next     = S_IF1;
             end
 
             // ------- ST effective address -------
             S_EA_ST: begin
-                // ALUOut <- imm
-                ALUSrcA    = 2'b10;                 // 0
-                ALUSrcB    = 2'b10;                 // imm
+                // no MemRead here (address calc only)
+                ALUSrcA    = 2'b10;     // 0
+                ALUSrcB    = 2'b10;     // imm
                 ALUOp      = ALU_PASSB;
                 ALUOutLoad = 1'b1;
                 next       = S_MEM_ST;
@@ -247,8 +252,9 @@ module control_unit (
 
             // ------- ST memory write -------
             S_MEM_ST: begin
-                AddrSel  = 1'b1;                    // mem.addr <= ALUOut
-                MemWrite = 1'b1;                    // mem.wdata driven by datapath (B)
+                AddrSel  = 1'b1;        // mem.addr <= ALUOut
+                MemRead  = 1'b0;        // <-- FORCE 0
+                MemWrite = 1'b1;        // write B to memory for one full cycle
                 next     = S_IF1;
             end
 
