@@ -14,14 +14,29 @@ module memory(clock, enable, writeEnable, address, writeData, readData);
       $readmemh("program.hex", mem);  // Then load 16-bit words, one per line
     end
 
-    // read from and write to memory when enabled
-    always @(posedge clock) begin
+    // read from and write to memory when enabled -- replaced by the lines below for faster and simpler simulation but better to keep for hardware implementation as block RAMs are inherently synchronous (both read and write with the clock)
+/*    always @(posedge clock) begin
         if (enable) begin
             if (writeEnable)
                 mem[address] <= writeData;
             else
                 readData <= mem[address];
         end
+    end
+*/
+
+    // read from and write to memory when enabled
+    always @(posedge clock) begin
+        if (enable && writeEnable)
+            mem[address] <= writeData;
+    end
+
+    // asynchronous read when enabled
+    always @* begin
+        if (enable)
+            readData = mem[address];
+        else
+            readData = 16'h0000;
     end
     
 
