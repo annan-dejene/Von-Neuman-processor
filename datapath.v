@@ -38,7 +38,6 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
     wire [15:0] regfile_data1_out, regfile_data2_out; // Outputs from RegFile --> content of the selected registers
     wire [15:0] alu_result_out;
     wire alu_zero_flag;
-    wire [15:0] mem_read_data_out, mem_write_data_in; // Memory data wires --> mem_read_data_out == readData and mem_write_data_in == writeData
 
     // --------------------------------------------------
     // Instruction Decoding Wires (based on your ISA format) --- decoded from the instruction register
