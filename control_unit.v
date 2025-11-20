@@ -1,273 +1,143 @@
+`include "ALU.v"
+`include "regfile.v"
+`include "memory.v"
+`include "pc.v"
+`include "datapath.v"
+
 // Control Unit for 16-bit RISC (multi-cycle, von Neumann, single-port memory)
-module control_unit (
-    input  wire        clk,
-    input  wire        reset,
+module control_unit(opcode, alu_zero_flag_in, reg_write_enable_out, mem_write_enable_out, alu_opcode_out, alu_src_select_out, mem_to_reg_select_out, jump_enable_out, branch_enable_out, mem_address_select_out, halt_cpu_out);
+    input [3:0] opcode;
+    input alu_zero_flag_in; // For branching logic in Control Unit
 
-    // Datapath feedback
-    input  wire [3:0]  opcode,    // IR[15:12]
-    input  wire        zero,      // ALU zero flag (for BEQZ)
+    // These outputs will be driving the datapath control wires
+    output reg reg_write_enable_out;
+    output reg mem_write_enable_out;
+    output reg [3:0] alu_opcode_out;
+    output reg alu_src_select_out;  // 0: Use RegFile data2, 1: Use Immediate value
+    output reg mem_to_reg_select_out; // 0: Write ALU result to RegFile, 1: Write Memory data to RegFile
+    output reg jump_enable_out; // 1: Enable jump logic/MUX selection for PC
+    output reg branch_enable_out,        // NEW: 1 to enable branch logic (used with zero flag)
+    output reg mem_address_select_out,   // NEW: 0=PC address (fetch), 1=ALU address (LD/ST)
+    output reg halt_cpu_out; 
 
-    // Control outputs to datapath
-    output reg         IRload,
-    output reg         Aload,
-    output reg         Bload,
-    output reg         ALUOutLoad,
-    output reg         MDRload,
-    output reg         RegWrite,
 
-    output reg         MemRead,
-    output reg         MemWrite,
-    output reg         MemToReg,  // 0: ALUOut -> RF ; 1: MDR -> RF
+    // --------------------------------------------------
+    // Local Parameters for our ISA Opcodes (from documentation)
+    // --------------------------------------------------
+    parameter OP_NOP  = 4'b0000;
+    parameter OP_ADD  = 4'b0001;
+    parameter OP_SUB  = 4'b0010;
+    parameter OP_AND  = 4'b0011;
+    parameter OP_OR   = 4'b0100;
+    parameter OP_XOR  = 4'b0101;
+    parameter OP_NOT  = 4'b0110;
+    parameter OP_MOV  = 4'b0111; // Formerly LDI
+    parameter OP_LD   = 4'b1000;
+    parameter OP_ST   = 4'b1001;
+    parameter OP_BEQZ = 4'b1010;
+    parameter OP_JMP  = 4'b1011;
+    parameter OP_HLT  = 4'b1110;
 
-    output reg  [1:0]  ALUSrcA,   // 00: PC, 01: A, 10: 0, 11: reserved
-    output reg  [1:0]  ALUSrcB,   // 00: B, 01: +1, 10: imm, 11: reserved
-    output reg  [2:0]  ALUOp,     // 0=ADD,1=SUB,2=AND,3=OR,4=XOR,5=PASSB
 
-    output reg         PCWrite,
-    output reg  [1:0]  PCSel,     // 00: ALUOut (PC+1), 01: ALUOut (branch target), 10: jump immediate
-    output reg         AddrSel,   // 0: PC -> mem.addr, 1: ALUOut -> mem.addr
+    // --------------------------------------------------
+    // Local Parameters for the ALU Opcodes (from ALU.v module)
+    // --------------------------------------------------
+    parameter ALU_ADD = 4'b0001;
+    parameter ALU_SUB = 4'b0010;
+    parameter ALU_AND = 4'b0011;
+    parameter ALU_OR  = 4'b0100;
+    parameter ALU_XOR = 4'b0101;
+    parameter ALU_NOT = 4'b0110;
+    parameter ALU_BYP = 4'b1111; // Default/Bypass num1
 
-    output reg         Halt       // stop execution
-);
-
-    // ------------ Opcode map ------------
-    localparam [3:0] OP_ADD  = 4'h0;
-    localparam [3:0] OP_SUB  = 4'h1;
-    localparam [3:0] OP_AND  = 4'h2;
-    localparam [3:0] OP_OR   = 4'h3;
-    localparam [3:0] OP_XOR  = 4'h4;
-    localparam [3:0] OP_LDI  = 4'h5;
-    localparam [3:0] OP_LD   = 4'h6;
-    localparam [3:0] OP_ST   = 4'h7;
-    localparam [3:0] OP_BEQZ = 4'h8;
-    localparam [3:0] OP_JMP  = 4'h9;
-    localparam [3:0] OP_HLT  = 4'hF;
-
-    // ------------ ALU operations ------------
-    localparam [2:0] ALU_ADD   = 3'd0;
-    localparam [2:0] ALU_SUB   = 3'd1;
-    localparam [2:0] ALU_AND   = 3'd2;
-    localparam [2:0] ALU_OR    = 3'd3;
-    localparam [2:0] ALU_XOR   = 3'd4;
-    localparam [2:0] ALU_PASSB = 3'd5;
-
-    // ------------ FSM states (Verilog-2001) ------------
-    localparam [3:0]
-        S_IF1    = 4'd0,   // start fetch
-        S_IF2    = 4'd1,   // latch IR, PC <- PC+1
-        S_ID     = 4'd2,   // decode, reg fetch, resolve beqz/jmp
-        S_EX_R   = 4'd3,   // ALU A op B -> ALUOut
-        S_WB_R   = 4'd4,   // RegWrite from ALUOut
-        S_EX_LDI = 4'd5,   // ALU PASSB(imm) -> ALUOut
-        S_WB_LDI = 4'd6,   // RegWrite from ALUOut
-        S_EA_LD  = 4'd7,   // effective address for LD
-        S_MEM_LD = 4'd8,   // MemRead -> MDR
-        S_WB_LD  = 4'd9,   // RegWrite from MDR
-        S_EA_ST  = 4'd10,  // effective address for ST
-        S_MEM_ST = 4'd11,  // MemWrite
-        S_HALT   = 4'd15;
-
-    reg [3:0] state;
-    reg [3:0] next;
-
-    // ------------ Sequential: state register ------------
-    always @(posedge clk or posedge reset) begin
-        if (reset)
-            state <= S_IF1;
-        else
-            state <= next;
-    end
-
-    // ------------ Combinational: defaults + outputs + next-state ------------
+    // --------------------------------------------------
+    // Main Control Logic (Combinational)
+    // --------------------------------------------------
     always @* begin
-        // defaults (deassert everything unless stated otherwise)
-        IRload     = 1'b0;
-        Aload      = 1'b0;
-        Bload      = 1'b0;
-        ALUOutLoad = 1'b0;
-        MDRload    = 1'b0;
-        RegWrite   = 1'b0;
+        // Default values for all control signals (Idle state / NOP behavior)
+        reg_write_enable_out = 0;
+        mem_write_enable_out = 0;
+        alu_opcode_out = ALU_BYP;      // Default to bypass num1
+        alu_src_select_out = 0;        // Default to use RegFile data2
+        mem_to_reg_select_out = 0;     // Default to write ALU result to RegFile
+        jump_enable_out = 0;
+        branch_enable_out = 0;        // Default to no branching
+        mem_address_select_out = 0;   // Default to PC address for instruction fetch
+        halt_cpu_out = 0;
 
-        MemRead    = 1'b0;
-        MemWrite   = 1'b0;
-        MemToReg   = 1'b0;
-
-        ALUSrcA    = 2'b00;  // default A = PC
-        ALUSrcB    = 2'b00;  // default B = reg B
-        ALUOp      = ALU_ADD;
-
-        PCWrite    = 1'b0;
-        PCSel      = 2'b00;  // from ALUOut
-        AddrSel    = 1'b0;   // PC -> mem.addr
-        Halt       = 1'b0;
-
-        next       = state;
-
-        case (state)
-            // ------- IF1: start instruction fetch -------
-            S_IF1: begin
-                AddrSel    = 1'b0;      // mem.addr <= PC
-                MemRead    = 1'b1;      // begin read
-                // Prepare PC+1 in ALUOut
-                ALUSrcA    = 2'b00;     // A=PC
-                ALUSrcB    = 2'b01;     // +1
-                ALUOp      = ALU_ADD;
-                ALUOutLoad = 1'b1;      // ALUOut <- PC+1
-                next       = S_IF2;
+        // Decode the instruction and set necessary signals
+        case (opcode)
+            OP_NOP: begin
+                // All signals remain at default (do nothing)
             end
 
-            // ------- IF2: latch IR, commit PC <- PC+1 -------
-            S_IF2: begin
-                MemRead  = 1'b1;
-                IRload   = 1'b1;        // IR <- mem.out
-                PCWrite  = 1'b1;        // PC <- ALUOut (PC+1)
-                PCSel    = 2'b00;
-                next     = S_ID;
+            // ALU Operations selected
+            OP_ADD, OP_SUB, OP_AND, OP_OR, OP_XOR, OP_NOT: begin
+                // R-Type Instructions:
+                reg_write_enable_out = 1;      // Write result back to register file
+                alu_src_select_out = 0;        // Use RegFile data2 for ALU num2 input
+
+                // Set specific ALU opcode
+                if (opcode == OP_ADD) alu_opcode_out = ALU_ADD;
+                else if (opcode == OP_SUB) alu_opcode_out = ALU_SUB;
+                else if (opcode == OP_AND) alu_opcode_out = ALU_AND;
+                else if (opcode == OP_OR) alu_opcode_out = ALU_OR;
+                else if (opcode == OP_XOR) alu_opcode_out = ALU_XOR;
+                else if (opcode == OP_NOT) alu_opcode_out = ALU_NOT;
+                // mem_to_reg_select_out is 0 by default (write ALU result back to regfile)
             end
 
-            // ------- ID: decode, read regfile, resolve BEQZ/JMP -------
-            S_ID: begin
-                Aload = 1'b1;           // A <- Reg[rs]
-                Bload = 1'b1;           // B <- Reg[rt]
-
-                // Precompute branch target for BEQZ: PC + imm
-                if (opcode == OP_BEQZ) begin
-                    ALUSrcA    = 2'b00; // PC
-                    ALUSrcB    = 2'b10; // imm
-                    ALUOp      = ALU_ADD;
-                    ALUOutLoad = 1'b1;  // ALUOut <- PC+imm
-                end
-
-                // Route by opcode (resolve JMP/BEQZ here)
-                if (opcode == OP_ADD || opcode == OP_SUB ||
-                    opcode == OP_AND || opcode == OP_OR  ||
-                    opcode == OP_XOR) begin
-                    next = S_EX_R;
-                end
-                else if (opcode == OP_LDI) begin
-                    next = S_EX_LDI;
-                end
-                else if (opcode == OP_LD) begin
-                    next = S_EA_LD;
-                end
-                else if (opcode == OP_ST) begin
-                    next = S_EA_ST;
-                end
-                else if (opcode == OP_BEQZ) begin
-                    if (zero) begin
-                        PCWrite = 1'b1; PCSel = 2'b01; // PC <- ALUOut (branch target)
-                    end
-                    next = S_IF1;
-                end
-                else if (opcode == OP_JMP) begin
-                    PCWrite = 1'b1; PCSel = 2'b10;     // PC <- jump immediate (from datapath)
-                    next    = S_IF1;
-                end
-                else if (opcode == OP_HLT) begin
-                    Halt = 1'b1;
-                    next = S_HALT;
-                end
-                else begin
-                    next = S_IF1; // default NOP
-                end
+            OP_MOV: begin
+                // I-Type Move Immediate: rd <- imm9
+                reg_write_enable_out = 1;      // Write result back to register file
+                alu_src_select_out = 1;        // Use Immediate value for ALU num2 input
+                alu_opcode_out = ALU_ADD;      // Add imm9 to R0 (which is 0) to get imm9 as result
+                // mem_to_reg_select_out is 0 by default (write ALU result back to regfile)
             end
 
-            // ------- R-type execute -------
-            S_EX_R: begin
-                // MemRead    = 1'b1;   // REMOVE: no memory access in R-execute
-                ALUSrcA    = 2'b01;     // A
-                ALUSrcB    = 2'b00;     // B
-                case (opcode)
-                OP_ADD: ALUOp = ALU_ADD;
-                OP_SUB: ALUOp = ALU_SUB;
-                OP_AND: ALUOp = ALU_AND;
-                OP_OR : ALUOp = ALU_OR;
-                OP_XOR: ALUOp = ALU_XOR;
-                default: ALUOp = ALU_ADD;
-                endcase
-                ALUOutLoad = 1'b1;
-                next       = S_WB_R;
+            OP_LD: begin
+                // R-Type Load: rd <- Mem[rs] (address is rs + rt, rt is 0)
+                reg_write_enable_out = 1;       
+                mem_to_reg_select_out = 1;      
+                alu_src_select_out = 0;         // Use RegFile data2 (rt=0)
+                alu_opcode_out = ALU_ADD;       // Calculate effective address
+                mem_address_select_out = 1;     // **CRITICAL: Use ALU address for memory access**
             end
 
-            // ------- R-type write-back -------
-            S_WB_R: begin
-                // MemRead  = 1'b1;     // REMOVE
-                RegWrite = 1'b1;        // ALUOut -> RF
-                MemToReg = 1'b0;
-                next     = S_IF1;
+            OP_ST: begin
+                 // R-Type Store: Mem[rs] <- data
+                mem_write_enable_out = 1;       
+                alu_src_select_out = 0;         // Use RegFile data2 (rt=0)
+                alu_opcode_out = ALU_ADD;       // Calculate effective address
+                mem_address_select_out = 1;     // **CRITICAL: Use ALU address for memory access**
+            end
+            
+            OP_BEQZ: begin
+                // I-Type Branch If Zero: if (rs == 0) PC <- PC + offset
+                // This logic is complex and usually handled in the PC logic itself, but the CU needs to know if the condition is met.
+                // We'll manage branching PC changes in the DataPath/Top level using alu_zero_flag_in.
+                // Control signals stay default, but we'll use alu_zero_flag_in externally.
+                branch_enable_out = 1;         // **CRITICAL: Enable branch logic in Datapath**
+                alu_src_select_out = 1;        // Need the immediate value for branch target calculation
+                alu_opcode_out = ALU_ADD;      // We don't need ALU op for condition, just PC calc
+                // Data path logic handles the condition check using alu_zero_flag_in
             end
 
-            // ------- LDI execute -------
-            S_EX_LDI: begin
-                // MemRead    = 1'b1;   // REMOVE
-                ALUSrcA    = 2'b10;     // 0
-                ALUSrcB    = 2'b10;     // imm
-                ALUOp      = ALU_PASSB;
-                ALUOutLoad = 1'b1;
-                next       = S_WB_LDI;
+            OP_JMP: begin
+                // I-Type Jump: PC <- imm9
+                jump_enable_out = 1;           // Assert jump enable signal
+                // All other signals remain default (NOP behavior for other components)
             end
 
-            // ------- LDI write-back -------
-            S_WB_LDI: begin
-                // MemRead  = 1'b1;     // REMOVE
-                RegWrite = 1'b1;
-                MemToReg = 1'b0;        // ALUOut
-                next     = S_IF1;
-            end
-
-            // ------- LD effective address -------
-            S_EA_LD: begin
-                // no MemRead here (address calc only)
-                ALUSrcA    = 2'b10;     // 0
-                ALUSrcB    = 2'b10;     // imm
-                ALUOp      = ALU_PASSB;
-                ALUOutLoad = 1'b1;
-                next       = S_MEM_LD;
-            end
-
-            // ------- LD memory read -------
-            S_MEM_LD: begin
-                AddrSel = 1'b1;         // mem.addr <= ALUOut
-                MemRead = 1'b1;         // <-- keep
-                MDRload = 1'b1;
-                next    = S_WB_LD;
-            end
-
-            // ------- LD write-back -------
-            S_WB_LD: begin
-                RegWrite = 1'b1;
-                MemToReg = 1'b1;        // MDR -> RF
-                next     = S_IF1;
-            end
-
-            // ------- ST effective address -------
-            S_EA_ST: begin
-                // no MemRead here (address calc only)
-                ALUSrcA    = 2'b10;     // 0
-                ALUSrcB    = 2'b10;     // imm
-                ALUOp      = ALU_PASSB;
-                ALUOutLoad = 1'b1;
-                next       = S_MEM_ST;
-            end
-
-            // ------- ST memory write -------
-            S_MEM_ST: begin
-                AddrSel  = 1'b1;        // mem.addr <= ALUOut
-                MemRead  = 1'b0;        // <-- FORCE 0
-                MemWrite = 1'b1;        // write B to memory for one full cycle
-                next     = S_IF1;
-            end
-
-            // ------- Halt -------
-            S_HALT: begin
-                Halt = 1'b1;
-                next = S_HALT;                      // stay until reset
+            OP_HLT: begin
+                // Halt the processor
+                halt_cpu_out = 1;
             end
 
             default: begin
-                next = S_IF1;
+                // Handle unsupported opcodes (e.g., error in simulation)
+                $display("Error: Unsupported opcode %b encountered at time %0t", opcode, $time);
             end
         endcase
     end
-
 endmodule
