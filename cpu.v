@@ -10,7 +10,7 @@ module cpu(clock, reset);
     input reset;
 
     wire [7:0] pc_address; // Connects PC output to internal logic/memory MUX
-    wire [15:0] instruction_register_wire; // Connects Memory output to Datapath input  
+    wire [15:0] instruction_register; // Connects Memory output to Datapath input  
 
     // Wires for memory control signals exported from the datapath
     wire mem_write_enable_cpu_w;         // Controls memory write enable
@@ -27,7 +27,7 @@ module cpu(clock, reset);
         .clock(clock),
         .reset(reset),
         .instruction_address(pc_address),
-        .instruction_register(instruction_register_wire),
+        .instruction_register(instruction_register),
         
         // Connect the memory control signals from datapath outputs to local wires
         .mem_write_enable_out(mem_write_enable_cpu_w),
