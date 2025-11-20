@@ -1,14 +1,20 @@
 `include "ALU.v"
 `include "regfile.v"
-`include "memory.v"
 `include "pc.v"
 `include "control_unit.v"
 
-module datapath(clock, reset, instruction_address, instruction_register);
+module datapath(clock, reset, instruction_address, instruction_register, mem_write_enable_out, mem_address_select_out, mem_write_data_out, alu_address_out, halt_cpu_out);
     input clock;
     input reset;
     output [7:0] instruction_address;  // PC address to memory module
     input [15:0] instruction_register; // Instruction coming from memory
+
+    // NEW PORTS ADDED FOR TOP-LEVEL MEMORY CONTROL:
+    output wire mem_write_enable_out;
+    output wire mem_address_select_out;
+    output wire [15:0] mem_write_data_out; // Data to write to memory
+    output wire [7:0] alu_address_out;      // Address to write/read from memory (ALU result)
+    output wire halt_cpu_out;   // Halt signal to stop simulation
 
 
     // --------------------------------------------------
@@ -90,24 +96,18 @@ module datapath(clock, reset, instruction_address, instruction_register);
 
 
     // --------------------------------------------------
-    // Component Instantiations
+    // Component Instantiations (PC, Regfile, ALU)
     // --------------------------------------------------
 
-    // Instantiate Program Counter (PC)
-    // We need a simple PC incrementer (PC+1) for sequential execution
-    wire [7:0] pc_plus_1;
-    assign pc_plus_1 = instruction_address + 8'd1;
-
-    // TODO: A MUX for PC_next_address (PC+1, branch target, or jump target) will go here later
-
+    // Program Counter (pc)
     pc my_pc(
         .clock(clock),
         .reset(reset),
-        .next_address(pc_plus_1), // Simple sequential increment for now
+        .next_address(pc_next_address), // Simple sequential increment for now
         .current_address(instruction_address)
     );
 
-    // Instantiate Register File (regfile)
+    // Register File (regfile)
     regfile my_regfile(
         .regSource1(rs_addr),
         .regSource2(rt_addr),
@@ -129,30 +129,6 @@ module datapath(clock, reset, instruction_address, instruction_register);
         .zero(alu_zero_flag)
     );
     
-    // Instantiate Memory (memory)
-    //  The instruction address (IF stage) and data address (MEM stage) use the same port in a von Neumann architecture, selected by MUX
-    // For single cycle, the ALU result usually determines the address.
-
-    // A MUX is needed here to choose the memory address (PC addr for IF, or ALU result for MEM stage)
-    wire [7:0] mem_access_address;
-    wire [7:0] mem_data_address; 
-    assign mem_data_address = alu_result_out[7:0]; // Use lower 8 bits of ALU result as memory address
-
-    // Select which address goes to the memory chip
-    assign mem_access_address = (mem_address_select_ctrl == 0) ? instruction_address : mem_data_address;
-
-    // Data to write to memory is regfile_data2_out (from the rs register for ST instruction)
-    assign mem_write_data_in = regfile_data2_out;
-
-    memory my_memory(
-        .clock(clock),
-        .enable(1'b1), // Always enabled in single cycle setup
-        .writeEnable(mem_write_enable_ctrl),
-        .address(mem_access_address), // Use the output of the Memory Address MUX
-        .writeData(mem_write_data_in),
-        .readData(mem_read_data_out)
-    );
-
 
     // --------------------------------------------------
     // Control Unit Instantiation
