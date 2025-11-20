@@ -1,6 +1,11 @@
-6405
-6603
-1A23
-7000
-C040
-F000
+@0000
+5205   // LDI R1, 0x05
+5403   // LDI R2, 0x03
+0650   // ADD R3, R1, R2        ; R3 = 8
+7038   // ST  [0x20], R3        ; mem[0x20] = 8
+6820   // LD  R4, [0x20]        ; R4 = 8
+8003   // BEQZ R0, +3           ; taken (R0=0), skip next two LDI's to reach ADD
+5AAA   // LDI R5, 0xAA          ; (skipped)
+5CBB   // LDI R6, 0xBB          ; (skipped)
+0B08   // ADD R5, R4, R1        ; R5 = 8 + 5 = 13 (0x000D)
+F000   // HLT
