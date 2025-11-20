@@ -22,11 +22,33 @@ module regfile(regSource1, regSource2, regDestination, writeData, data1, data2, 
             begin
                 // initialize registers to 0 initially
                 for (i=0; i<8; i=i+1)
-                    registers[i] <= 16'b0000_0000_0000_0000;    
+                    registers[i] <= 16'b0000_0000_0000_0000;
+                display_memory_content(); // displays the initial content of the register
             end
         
         else if (writeEnable && regDestination != 3'b000) // if writing enabled then write the data from 'writeData' to the specified destination register like MOV
             registers[regDestination] <= writeData;
+    end
+
+
+
+    task display_memory_content(); 
+        // variables for writing memory content to a file
+        integer f; // file handler
+        integer j; // memory location counter
+
+        begin
+            f = $fopen("register_content.txt", "w"); // open the file for writing
+            for (j = 0; j < 8; j++) begin
+                $fwrite(f, "R%1d: %04h\n", j, registers[j]);  // addr: data
+            end
+            $fclose(f); // close the file        
+        end
+    endtask
+
+    always @(negedge clock) begin
+        if (writeEnable && regDestination != 3'b000)
+            display_memory_content();
     end
 
 
