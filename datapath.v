@@ -49,6 +49,9 @@ module datapath (
     wire [2:0] rs = IR_q[8:6];
     wire [2:0] rt = IR_q[5:3];
 
+    // For single-operand ops (ST, BEQZ) the source register is in RD field in your encoding.
+    wire [2:0] src1_sel = (opcode == 4'h7 /*ST*/ || opcode == 4'h8 /*BEQZ*/) ? rd : rs;
+
     // Sign-extended 8-bit immediate (you can change width to taste)
     wire [15:0] imm16 = {{8{IR_q[7]}}, IR_q[7:0]};
 
@@ -63,7 +66,7 @@ module datapath (
     wire [15:0] rf_wdata = (MemToReg) ? MDR_q : ALUOut_q;
 
     regfile RF (
-        .regSource1     (rs),
+        .regSource1     (src1_sel),
         .regSource2     (rt),
         .regDestination (rd),
         .writeData      (rf_wdata),
@@ -154,7 +157,7 @@ module datapath (
         .enable      (mem_enable),
         .writeEnable (mem_writeEnable),
         .address     (mem_addr),
-        .writeData   (B_q),
+        .writeData   (A_q),
         .readData    (mem_rdata)
     );
 
@@ -182,7 +185,7 @@ module datapath (
         if (reset)
             IR_q <= 16'h0000;
         else if (IRload)
-            IR_q <= ram_out;      // instruction fetch path
+            IR_q <= mem_rdata;      // instruction fetch path
     end
 
     // ------------------------------------------------------------
@@ -212,7 +215,7 @@ module datapath (
 endmodule
 
 // ------------------------------------------------------------
-// Simple 16-bit combinational ALU (Verilog-2001)
+// Simple 16-bit combinational ALU
 // op: 0=ADD, 1=SUB, 2=AND, 3=OR, 4=XOR, 5=PASSB
 // ------------------------------------------------------------
 module alu16 (
