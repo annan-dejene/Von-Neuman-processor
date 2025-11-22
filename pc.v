@@ -18,7 +18,7 @@ module pc(clock, reset, next_address, current_address);
     endtask
 
     // The core logic behind our PC is a synchronous register with asynchronous reset
-    always @(posedge clock or posedge reset) begin
+    always @(posedge clock) begin
         if (reset) begin
             current_address <= 8'h00; // Reset PC to the start of memory (address 0)
         end 
