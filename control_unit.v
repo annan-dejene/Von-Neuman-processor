@@ -92,7 +92,7 @@ module control_unit(opcode, alu_zero_flag_in, reg_write_enable_out, mem_write_en
             OP_BEQZ: begin
                 branch_enable_out = 1;         
                 alu_src_select_out = 1; // Needed for PC offset calculation       
-                alu_opcode_out = ALU_ADD;      
+                alu_opcode_out = ALU_BYP;      
             end
 
             OP_JMP: begin
