@@ -90,7 +90,7 @@ module datapath(clock, reset, instruction_register, pc_write_enable, mem_read_da
     // Calculate Branch Target Address: PC+1 + offset (sign extended)
     // Note: The result needs to be trimmed to 8 bits for your 8-bit address space
     wire [7:0] branch_target_address;
-    assign branch_target_address = instruction_address + immediate_sign_extended[7:0] + 8'd1; 
+    assign branch_target_address = immediate_sign_extended[7:0]; 
     
     // For JMP (OP_JMP), we use the immediate value as the target address (absolute address)
     wire [7:0] pc_jump_target;
