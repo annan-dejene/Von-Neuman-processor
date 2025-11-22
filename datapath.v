@@ -3,12 +3,18 @@
 `include "pc.v"
 `include "control_unit.v"
 
-module datapath(clock, reset, instruction_address, instruction_register, mem_write_enable_out, mem_address_select_out, mem_write_data_out, alu_address_out, halt_cpu_out);
+module datapath(clock, reset, instruction_register, pc_write_enable, mem_read_data_in, instruction_address, mem_write_enable_out, mem_address_select_out, mem_write_data_out, alu_address_out, halt_cpu_out);
     input clock;
     input reset;
-    output [7:0] instruction_address;  // PC address to memory module
     input [15:0] instruction_register; // Instruction coming from memory
+    output [7:0] instruction_address;  // PC address to memory module
 
+    input wire [15:0] mem_read_data_in;
+
+    // NEW: Input to freeze the PC when needed
+    input pc_write_enable; 
+    
+ 
     // NEW PORTS ADDED FOR TOP-LEVEL MEMORY CONTROL:
     output wire mem_write_enable_out;
     output wire mem_address_select_out;
@@ -29,7 +35,9 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
     // Add other control signals as needed (e.g., jump enable, halt enable)
     wire halt_cpu_ctrl;
     wire jump_enable_ctrl;
+    wire branch_enable_ctrl; // declared here so it's visible and can be connected to the top-level outputs
 
+    wire mem_address_select_ctrl;
 
     // --------------------------------------------------
     // Internal Wires for Data Flow
@@ -70,7 +78,7 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
 
     // MUX 2: Register File Write Data Selection (ALU result or Memory Read Data)
     wire [15:0] reg_write_data_in;
-    assign reg_write_data_in = (mem_to_reg_select_ctrl == 0) ? alu_result_out : mem_read_data_out;
+    assign reg_write_data_in = (mem_to_reg_select_ctrl == 0) ? alu_result_out : mem_read_data_in;
 
 
     // --------------------------------------------------
@@ -93,6 +101,16 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
     assign pc_next_address = (jump_enable_ctrl) ? pc_jump_target : 
                                                                     (branch_enable_ctrl && alu_zero_flag) ? branch_target_address : pc_plus_1;                                 
 
+    // --------------------------------------------------
+    // PC Logic with Stall (Write Enable)
+    // --------------------------------------------------
+    // If pc_write_enable is 0, we force the "next" address to be the "current" address.
+    // This effectively holds the PC value for one cycle.
+    // We need to do this to be able to fetch data or store data to memory while the program counter is frozen and not incremented as we are unable to fetch next instruction and data from the same memory with the same data path i.e. the von neumann bottle neck
+    wire [7:0] actual_next_pc;
+    assign actual_next_pc = (pc_write_enable) ? pc_next_address : instruction_address;
+
+
 
     // --------------------------------------------------
     // Component Instantiations (PC, Regfile, ALU)
@@ -102,7 +120,7 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
     pc my_pc(
         .clock(clock),
         .reset(reset),
-        .next_address(pc_next_address), // Simple sequential increment for now
+        .next_address(actual_next_pc), // Simple sequential increment for now
         .current_address(instruction_address)
     );
 
@@ -114,7 +132,7 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
         .writeData(reg_write_data_in),
         .data1(regfile_data1_out),
         .data2(regfile_data2_out),
-        .writeEnable(reg_write_enable_ctrl),
+        .writeEnable(reg_write_enable_ctrl && pc_write_enable),
         .clock(clock),
         .reset(reset)
     );
@@ -127,6 +145,17 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
         .result(alu_result_out),
         .zero(alu_zero_flag)
     );
+
+    // --------------------------------------------------
+    // Connect internal control/data wires to module outputs so top-level can use them
+    // --------------------------------------------------
+    // Drive memory control/data outputs
+    // During reset ensure safe defaults so memory fetch can use PC (no dependence on decoded opcode)
+    assign mem_write_enable_out = reset ? 1'b0 : mem_write_enable_ctrl;
+    assign mem_address_select_out = reset ? 1'b0 : mem_address_select_ctrl;
+    assign mem_write_data_out = reset ? 16'h0000 : regfile_data2_out; // write data comes from regfile data2
+    assign alu_address_out = reset ? 8'h00 : alu_result_out[7:0];   // lower 8 bits of ALU result used as memory address
+    assign halt_cpu_out = reset ? 1'b0 : halt_cpu_ctrl;
     
 
     // --------------------------------------------------
@@ -136,11 +165,11 @@ module datapath(clock, reset, instruction_address, instruction_register, mem_wri
     control_unit my_control_unit(
         .opcode(opcode),
         .alu_zero_flag_in(alu_zero_flag),
-        .reg_write_enable_out(reg_write_enable_ctrl),
-        .mem_write_enable_out(mem_write_enable_ctrl),
-        .alu_opcode_out(alu_opcode_ctrl),
-        .alu_src_select_out(alu_src_select_ctrl),
-        .mem_to_reg_select_out(mem_to_reg_select_ctrl),
+        .reg_write_enable_out(reg_write_enable_ctrl), // write enabe for register file ---> set to 1 when writing to register file
+        .mem_write_enable_out(mem_write_enable_ctrl), // write enable for memory ----> set to 1 when writing to memory
+        .alu_opcode_out(alu_opcode_ctrl), // the opcode for the ALU operation outputted from the control unit based on the instruction register[15:12] and inputted to the ALU instance to select operation
+        .alu_src_select_out(alu_src_select_ctrl), //set by the control unit as output depending on the instruction whether it uses register file data 2 or immediate --> 0: Use RegFile data2, 1: Use Immediate value depending on the instruction type 
+        .mem_to_reg_select_out(mem_to_reg_select_ctrl), // 0: Write ALU result to RegFile, 1: Write Memory data to RegFile
         .halt_cpu_out(halt_cpu_ctrl),
         .jump_enable_out(jump_enable_ctrl),
         .branch_enable_out(branch_enable_ctrl), // Connect new control signal
