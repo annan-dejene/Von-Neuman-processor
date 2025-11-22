@@ -23,7 +23,7 @@ module regfile(regSource1, regSource2, regDestination, writeData, data1, data2, 
                 // initialize registers to 0 initially
                 for (i=0; i<8; i=i+1)
                     registers[i] <= 16'b0000_0000_0000_0000;
-                display_memory_content(); // displays the initial content of the register
+                // display_memory_content(); // displays the initial content of the register
             end
         
         else if (writeEnable && regDestination != 3'b000) // if writing enabled then write the data from 'writeData' to the specified destination register like MOV
@@ -46,10 +46,10 @@ module regfile(regSource1, regSource2, regDestination, writeData, data1, data2, 
         end
     endtask
 
-    always @(negedge clock) begin
-        if (writeEnable && regDestination != 3'b000)
-            display_memory_content();
-    end
+    // always @(negedge clock) begin
+    //     if (writeEnable && regDestination != 3'b000)
+    //         display_memory_content();
+    // end
 
 
     /* Using the same register as the destination and source
