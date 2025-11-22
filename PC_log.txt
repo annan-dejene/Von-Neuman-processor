@@ -1,8 +1,0 @@
-Time: 0 ns | Next Addr: ff | Current Addr: xx
-Time: 10 ns | Next Addr: 01 | Current Addr: 00
-Time: 20 ns | Next Addr: 02 | Current Addr: 01
-Time: 30 ns | Next Addr: 03 | Current Addr: 02
-Time: 40 ns | Next Addr: 20 | Current Addr: 03
-Time: 50 ns | Next Addr: 21 | Current Addr: 20
-Time: 60 ns | Next Addr: 22 | Current Addr: 21
-Time: 70 ns | Next Addr: 22 | Current Addr: 22
