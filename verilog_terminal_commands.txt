@@ -1,8 +1,0 @@
-// Creates a vvp file from the test bench
-iverilog -o simulations/(filename)_tb.vvp (filename)_tb.v 
-
-// Shows simulation output in tabular format and created a vcd file for graphical display of simulation
-vvp simulations/(filename)_tb.vvp  
-
-// Graphical simulation of outputs
-gtkwave simulations/(filename).vcd 
