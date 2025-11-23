@@ -9,7 +9,7 @@ module memory(clock, enable, writeEnable, address, writeData, readData);
 
     // load memory content from program.hex
     initial begin
-        $readmemh("program.hex", mem);  // Then load 16-bit words, one per line
+        $readmemh("asm/program.hex", mem);  // Then load 16-bit words, one per line
         display_memory_content(); // begin by displaying the memory content in the file
         // $writememh("memory_content.txt", mem); // alternative
 
@@ -21,7 +21,7 @@ module memory(clock, enable, writeEnable, address, writeData, readData);
         integer j; // memory location counter
 
         begin
-            f = $fopen("memory_content.txt", "w"); // open the file for writing
+            f = $fopen("sim/logs/memory_content.txt", "w"); // open the file for writing
             for (j = 0; j < 256; j++) begin
                 $fwrite(f, "%02d: %04h\n", j[7:0], mem[j]);  // addr: data
             end

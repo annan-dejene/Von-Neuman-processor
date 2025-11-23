@@ -1,5 +1,5 @@
-`include "memory.v"
-`include "datapath.v"
+// `include "memory.v"
+// `include "datapath.v"
 
 module cpu(clock, reset);
     input clock;

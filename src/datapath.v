@@ -1,7 +1,7 @@
-`include "ALU.v"
-`include "regfile.v"
-`include "pc.v"
-`include "control_unit.v"
+// `include "ALU.v"
+// `include "regfile.v"
+// `include "pc.v"
+// `include "control_unit.v"
 
 module datapath(clock, reset, instruction_register, pc_write_enable, mem_read_data_in, instruction_address, mem_write_enable_out, mem_address_select_out, mem_write_data_out, alu_address_out, halt_cpu_out);
     input clock;

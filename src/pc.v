@@ -9,7 +9,7 @@ module pc(clock, reset, next_address, current_address);
         integer f_pc_log;
         // Use $fopen with "a" mode to APPEND to the file (prevents overwriting every time)
         begin
-            f_pc_log = $fopen("PC_log.txt", "a"); 
+            f_pc_log = $fopen("sim/logs/PC_log.txt", "a"); 
             if (f_pc_log) begin
                 $fwrite(f_pc_log, "Time: %0t ns | Next Addr: %h | Current Addr: %h\n", $time, next_address, current_address);
                 $fclose(f_pc_log);

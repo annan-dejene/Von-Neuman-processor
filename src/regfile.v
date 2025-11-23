@@ -38,7 +38,7 @@ module regfile(regSource1, regSource2, regDestination, writeData, data1, data2, 
         integer j; // memory location counter
 
         begin
-            f = $fopen("register_content.txt", "w"); // open the file for writing
+            f = $fopen("sim/logs/register_content.txt", "w"); // open the file for writing
             for (j = 0; j < 8; j++) begin
                 $fwrite(f, "R%1d: %04h\n", j, registers[j]);  // addr: data
             end
