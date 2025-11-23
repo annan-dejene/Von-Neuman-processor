@@ -13,7 +13,7 @@ module memory_tb;
 
     initial begin
     // generate files needed to plot the waveform using GTKWave
-        $dumpfile("simulations/memory_wavedata.vcd");
+        $dumpfile("sim/waveforms/memory_wavedata.vcd");
 		$dumpvars(0, memory_tb);
 
         // assign values with time to input signals to see output

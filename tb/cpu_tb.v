@@ -1,4 +1,4 @@
-`include "cpu.v"
+// `include "../src/cpu.v"
 
 module cpu_tb;
     reg clock, reset;
@@ -17,9 +17,8 @@ module cpu_tb;
 		    $dumpvars(0, cpu_tb);
         
         // Clear PC log file
-        
-        begin // <--- Add this begin block
-            f = $fopen("PC_log.txt", "w");
+        begin 
+            f = $fopen("sim/logs/PC_log.txt", "w");
             $fclose(f); 
         end 
 
@@ -35,7 +34,7 @@ module cpu_tb;
         // is executed (handled by the logic inside cpu.v)
         
         // Add a safety timeout just in case HLT is never reached
-        #1000; 
+        #10000; 
         $display("Simulation timed out, HLT not reached.");
         my_cpu.my_datapath.my_regfile.display_memory_content();
         $finish;

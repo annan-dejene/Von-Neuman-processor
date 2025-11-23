@@ -8,7 +8,7 @@ module ALU_tb;
     ALU myALU(.num1(num1), .num2(num2), .opcode(opcode), .result(result), .zero(zero));
 
     initial begin
-        $dumpfile("simulations/alu_wavedata.vcd");
+        $dumpfile("sim/waveforms/alu_wavedata.vcd");
 		$dumpvars(0, ALU_tb);
 
 

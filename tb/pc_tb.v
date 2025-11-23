@@ -11,7 +11,7 @@ module pc_tb;
     always #5 clock = ~clock;
 
     initial begin
-        $dumpfile("simulations/pc_wavedata.vcd");
+        $dumpfile("sim/waveforms/pc_wavedata.vcd");
 		$dumpvars(0, pc_tb);
 
         // Initial setup

@@ -13,7 +13,7 @@ module regfile_tb;
 
     initial begin
     // generate files needed to plot the waveform using GTKWave
-        $dumpfile("simulations/reg_file_wavedata.vcd");
+        $dumpfile("sim/waveforms/reg_file_wavedata.vcd");
 		$dumpvars(0, regfile_tb);
 
         // Initial setup
