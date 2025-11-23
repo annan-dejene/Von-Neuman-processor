@@ -13,7 +13,7 @@ module cpu_tb;
 
     initial begin
         // Generate waveform dump file
-        $dumpfile("simulations/cpu_wavedata.vcd");
+        $dumpfile("sim/waveforms/cpu_wavedata.vcd");
 		    $dumpvars(0, cpu_tb);
         
         // Clear PC log file
