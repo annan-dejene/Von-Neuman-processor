@@ -52,19 +52,30 @@ module datapath(clock, reset, instruction_register, pc_write_enable, mem_read_da
     // --------------------------------------------------
     wire [3:0] opcode;
     wire [2:0] rd_addr, rs_addr, rt_addr;
-    wire [5:0] immediate;
+    wire [5:0] imm6;
+    wire [8:0] imm9;
 
     assign opcode = instruction_register[15:12];
     assign rd_addr = instruction_register[11:9];
     assign rs_addr = instruction_register[8:6];
     assign rt_addr = instruction_register[5:3];
-    assign immediate = instruction_register[5:0]; // The immediate is 6 bits for I-type format instructions --------
+    assign imm6 = instruction_register[5:0]; // The immediate is 6 bits for I-type format instructions JMP & BEQZ
+    assign imm9 = instruction_register[8:0]; // The immediate is 9 bits for I-type format instruction MOV
 
-// ----> we wil use either rs and rt for R-type instructions or the immediate 9 bits for I-type instructions
-    
-    // We need to sign-extend the 6-bit immediate to 16 bits for arithmetic operations (MOV, LD, ST, BEQZ)
+// ----> we wil use either rs and rt for R-type instructions or the immediate 9 or 6 bits for I-type instructions
+
+    // Sign Extension Logic
+    wire [15:0] imm6_extended;
+    wire [15:0] imm9_extended;
     wire [15:0] immediate_sign_extended;
-    assign immediate_sign_extended = {{10{immediate[5]}}, immediate}; // Sign extend 6 bits to 16 bits
+
+    assign imm6_extended = {{10{imm6[5]}}, imm6}; // Sign-extend 6-bit
+    assign imm9_extended = {{7{imm9[8]}}, imm9};  // Sign-extend 9-bit
+
+    // MUX: Select Immediate Size
+    // If Opcode is MOV (0111), use 9-bit immediate. Otherwise, use 6-bit.
+    // We need to sign-extend the 6-bit immediate to 16 bits for arithmetic operations (MOV, LD, ST, BEQZ)
+    assign immediate_sign_extended = (opcode == 4'b0111) ? imm9_extended : imm6_extended; 
 
     // --------------------------------------------------
     // MUXes and Logic
