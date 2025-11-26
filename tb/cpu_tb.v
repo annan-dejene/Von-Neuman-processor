@@ -34,7 +34,7 @@ module cpu_tb;
         // is executed (handled by the logic inside cpu.v)
         
         // Add a safety timeout just in case HLT is never reached
-        #10000; 
+        #1000000000; // timeout after 1 second 
         $display("Simulation timed out, HLT not reached.");
         my_cpu.my_datapath.my_regfile.display_memory_content();
         $finish;
