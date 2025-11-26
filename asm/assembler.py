@@ -28,104 +28,139 @@ def parse_register(token):
     # Remove brackets [ ] if present (common in load/store syntax)
     token = token.strip().replace("[", "").replace("]", "").rstrip(",")
     if token not in REGISTER_MAP:
-        raise ValueError(f"Invalid register: {token}")
+        raise ValueError(f"Invalid register: '{token}'. Expected R0-R7.")
     return REGISTER_MAP[token]
 
 
 def parse_immediate(token):
     token = token.strip().replace("#", "")
-    return int(token, 0)  # supports decimal or hex (0x..)
+    try:
+        return int(token, 0)
+    except ValueError:
+        raise ValueError(f"Invalid immediate value: '{token}'")
 
 
 # ----- Encoding Functions -----
 def encode_r_type(op, rd, rs, rt):
-    # R-Type: Op(15:12) | Rd(11:9) | Rs(8:6) | Rt(5:3) | Unused(2:0)
     opcode = OPCODES[op] << 12
     return opcode | (rd << 9) | (rs << 6) | (rt << 3)
 
 
 def encode_i_type(op, rd, imm):
-    # I-Type: Op(15:12) | Rd(11:9) | Imm(8:0)
-    # Used for MOV
+    # I-Type: Op(15:12) | Rd(11:9) | Imm(5:0)  <-- CHANGED to 6 bits
     opcode = OPCODES[op] << 12
+
+    # Range Check for 6-bit signed (-32 to +31) or unsigned (0 to 63)
+    # We allow 0-63 unsigned as it's common for addresses/constants
+    if not (-32 <= imm <= 63):
+        raise ValueError(f"Immediate {imm} out of range for 6-bit field (-32 to 63)")
+
+    imm &= 0x3F  # Mask to 6 bits (was 0x1FF)
+    return opcode | (rd << 9) | imm
+
+
+def encode_mov_type(op, rd, imm):
+    # SPECIALIZED for MOV: Uses 9-bit immediate
+    # Range: -256 to +255 (Signed) or 0 to 511 (Unsigned)
+    opcode = OPCODES[op] << 12
+
+    # 9-bit Range Check
+    if not (-256 <= imm <= 511):
+        raise ValueError(f"Immediate {imm} out of range for 9-bit field (-256 to 511)")
+
     imm &= 0x1FF  # Mask to 9 bits
     return opcode | (rd << 9) | imm
 
 
 def encode_branch_type(op, rs, imm):
-    # Branch Type: Op(15:12) | Unused(11:9) | Rs(8:6) | Imm(5:0)
-    # Used for BEQZ
     opcode = OPCODES[op] << 12
+
+    if not (-32 <= imm <= 63):
+        raise ValueError(
+            f"Branch offset {imm} out of range for 6-bit field (-32 to 63)"
+        )
+
     imm &= 0x3F  # Mask to 6 bits
     return opcode | (rs << 6) | imm
 
 
 # ----- Assembler Core -----
 def assemble_line(line):
-    line = line.split(";")[0].strip()  # remove comments
+    line = line.split(";")[0].strip()
     if not line:
         return None
 
     parts = re.split(r"[ ,]+", line)
     mnemonic = parts[0].upper()
 
-    # --- R-Type Instructions (3 Regs) ---
-    if mnemonic in ["ADD", "SUB", "AND", "OR", "XOR"]:
-        rd = parse_register(parts[1])
-        rs = parse_register(parts[2])
-        rt = parse_register(parts[3])
-        return encode_r_type(mnemonic, rd, rs, rt)
+    try:
+        # --- R-Type Instructions (3 Regs) ---
+        if mnemonic in ["ADD", "SUB", "AND", "OR", "XOR"]:
+            if len(parts) < 4:
+                raise ValueError(f"{mnemonic} requires 3 registers (Rd, Rs, Rt)")
+            return encode_r_type(
+                mnemonic,
+                parse_register(parts[1]),
+                parse_register(parts[2]),
+                parse_register(parts[3]),
+            )
 
-    # --- R-Type (2 Regs) ---
-    if mnemonic == "NOT":
-        rd = parse_register(parts[1])
-        rs = parse_register(parts[2])
-        return encode_r_type(mnemonic, rd, rs, 0)
+        # --- R-Type (2 Regs) ---
+        if mnemonic == "NOT":
+            if len(parts) < 3:
+                raise ValueError(f"{mnemonic} requires 2 registers (Rd, Rs)")
+            return encode_r_type(
+                mnemonic, parse_register(parts[1]), parse_register(parts[2]), 0
+            )
 
-    # --- Move Immediate ---
-    if mnemonic == "MOV":
-        rd = parse_register(parts[1])
-        imm = parse_immediate(parts[2])
-        return encode_i_type(mnemonic, rd, imm)
+        # --- Move Immediate ---
+        if mnemonic == "MOV":
+            if len(parts) < 3:
+                raise ValueError(f"{mnemonic} requires Register and Immediate")
+            # Uses encode_i_type which now enforces 6-bit limit
+            return encode_mov_type(
+                mnemonic, parse_register(parts[1]), parse_immediate(parts[2])
+            )
 
-    # --- Memory Instructions (Register Addressing) ---
-    # LDR Rd, [Rs]
-    if mnemonic == "LDR":
-        rd = parse_register(parts[1])  # Destination
-        rs = parse_register(parts[2])  # Address Source
-        # Map LDR -> LD opcode, Rt=0
-        return encode_r_type("LD", rd, rs, 0)
+        # --- Memory Instructions ---
+        if mnemonic == "LDR":  # LDR Rd, [Rs]
+            if len(parts) < 3:
+                raise ValueError("LDR requires Destination and Address Register")
+            return encode_r_type(
+                "LD", parse_register(parts[1]), parse_register(parts[2]), 0
+            )
 
-    # STR Rs, Rt (Store Address, Data)
-    # Based on your hardware test: STR R2, R1 (Mem[R2] = R1)
-    # Syntax: STR AddrReg, DataReg
-    if mnemonic == "STR":
-        rs = parse_register(parts[1])  # Address Register (Rs)
-        rt = parse_register(parts[2])  # Data Register (Rt)
-        # Map STR -> ST opcode, Rd=0
-        return encode_r_type("ST", 0, rs, rt)
+        if mnemonic == "STR":  # STR Rs, Rt
+            if len(parts) < 3:
+                raise ValueError("STR requires Address Register and Data Register")
+            return encode_r_type(
+                "ST", 0, parse_register(parts[1]), parse_register(parts[2])
+            )
 
-    # --- Control Flow ---
-    # BEQZ Rs, Imm
-    if mnemonic == "BEQZ":
-        rs = parse_register(parts[1])  # Condition Register (Rs)
-        imm = parse_immediate(parts[2])
-        # Must use Rs (bits 8:6), NOT Rd!
-        return encode_branch_type(mnemonic, rs, imm)
+        # --- Control Flow ---
+        if mnemonic == "BEQZ":
+            if len(parts) < 3:
+                raise ValueError(
+                    "BEQZ requires Register and Address (e.g., BEQZ R1, 0x07)"
+                )
+            rs = parse_register(parts[1])
+            imm = parse_immediate(parts[2])
+            return encode_branch_type(mnemonic, rs, imm)
 
-    # JMP Imm
-    if mnemonic == "JMP":
-        imm = parse_immediate(parts[1])
-        # JMP uses the immediate directly
-        return (OPCODES["JMP"] << 12) | (
-            imm & 0xFFF
-        )  # Mask to 12 bits if needed, usually 6
+        if mnemonic == "JMP":
+            if len(parts) < 2:
+                raise ValueError("JMP requires an Address")
+            imm = parse_immediate(parts[1])
+            # Hardware only reads bottom 6 bits for address, so we mask 0x3F
+            return (OPCODES["JMP"] << 12) | (imm & 0x3F)
 
-    # Halt
-    if mnemonic == "HLT":
-        return OPCODES["HLT"] << 12
+        if mnemonic == "HLT":
+            return OPCODES["HLT"] << 12
 
-    raise ValueError(f"Unknown instruction: {line}")
+        raise ValueError(f"Unknown instruction: {mnemonic}")
+
+    except IndexError:
+        raise ValueError("Missing arguments")
 
 
 # ----- File Handling -----
@@ -140,34 +175,26 @@ def assemble_to_hex(input_file, output_file):
                         machine_code.append(f"{encoded:04X}")
                 except Exception as e:
                     print(f"Error on line {line_num}: {line.strip()} -> {e}")
-                    sys.exit(1)  # Exit with error code
+                    sys.exit(1)
 
         with open(output_file, "w") as f:
             for word in machine_code:
                 f.write(word + "\n")
-            # Add a trailing newline to prevent simulator timeout/truncation
             f.write("\n")
 
         print(f"✔ Success! Assembled {len(machine_code)} instructions to {output_file}")
 
     except FileNotFoundError:
         print(f"Error: Input file '{input_file}' not found.")
-        sys.exit(1)  # Exit with error code
+        sys.exit(1)
 
 
-# ----- Run Assembler -----
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Assemble RISC-16 assembly code to hex machine code."
-    )
-    parser.add_argument("input_file", help="Path to the input assembly file (.asm)")
+    parser = argparse.ArgumentParser(description="Assemble RISC-16 assembly code.")
+    parser.add_argument("input_file", help="Input assembly file (.asm)")
     parser.add_argument(
-        "output_file",
-        nargs="?",
-        default="program.hex",
-        help="Path to the output hex file (default: program.hex)",
+        "output_file", nargs="?", default="program.hex", help="Output hex file"
     )
 
     args = parser.parse_args()
-
     assemble_to_hex(args.input_file, args.output_file)
