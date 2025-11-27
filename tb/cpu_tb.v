@@ -42,12 +42,16 @@ module cpu_tb;
 
     // Monitor key signals (optional, but useful for quick terminal checks)
     initial begin
-        $monitor("Time: %0t | PC Addr: %h | Instruction: %h | Reg R3: %h | Reg R5: %h | ALU Zero: %b", 
+        $monitor("Time: %0t | PC Addr: %h | Instruction: %h | Reg R1: %h | Reg R2: %h | Reg R3: %h | Reg R4: %h | Reg R5: %h | Reg R6: %h | ALU Zero: %b", 
                  $time, 
                  my_cpu.my_datapath.instruction_address, 
-                 my_cpu.instruction_register_store, 
-                 my_cpu.my_datapath.my_regfile.registers[3], // Accessing internal register 3 value
-                 my_cpu.my_datapath.my_regfile.registers[5], // Accessing internal register 5 value
+                 my_cpu.instruction_register_store,
+                 my_cpu.my_datapath.my_regfile.registers[1], 
+                 my_cpu.my_datapath.my_regfile.registers[2], 
+                 my_cpu.my_datapath.my_regfile.registers[3], 
+                 my_cpu.my_datapath.my_regfile.registers[4], 
+                 my_cpu.my_datapath.my_regfile.registers[5], // Accessing internal register 3 value
+                 my_cpu.my_datapath.my_regfile.registers[6], // Accessing internal register 5 value
                  my_cpu.my_datapath.alu_zero_flag);
     end
 
