@@ -1,4 +1,0 @@
-MOV R1, #74
-MOV R2, #13
-ADD R3, R1, R2
-HLT
