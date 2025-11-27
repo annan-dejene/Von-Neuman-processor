@@ -1,0 +1,95 @@
+$date
+	Thu Nov 20 20:01:01 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module pc_tb $end
+$var wire 8 ! current_address [7:0] $end
+$var reg 1 " clock $end
+$var reg 8 # next_address [7:0] $end
+$var reg 1 $ reset $end
+$scope module my_pc $end
+$var wire 1 " clock $end
+$var wire 8 % next_address [7:0] $end
+$var wire 1 $ reset $end
+$var reg 8 & current_address [7:0] $end
+$scope task log_pc_change $end
+$var integer 32 ' f_pc_log [31:0] $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b10000000000000000000000000000011 '
+b0 &
+b11111111 %
+1$
+b11111111 #
+0"
+b0 !
+$end
+#5
+1"
+#10
+b1 #
+b1 %
+0"
+0$
+#15
+b1 !
+b1 &
+1"
+#20
+b10 #
+b10 %
+0"
+#25
+b10 !
+b10 &
+1"
+#30
+b11 #
+b11 %
+0"
+#35
+b11 !
+b11 &
+1"
+#40
+b100000 #
+b100000 %
+0"
+#45
+b100000 !
+b100000 &
+1"
+#50
+b100001 #
+b100001 %
+0"
+#55
+b100001 !
+b100001 &
+1"
+#60
+b100010 #
+b100010 %
+0"
+#65
+b100010 !
+b100010 &
+1"
+#70
+0"
+#75
+1"
+#80
+0"

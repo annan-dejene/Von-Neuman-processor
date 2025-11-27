@@ -1,0 +1,134 @@
+$date
+	Thu Nov 20 19:02:24 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module regfile_tb $end
+$var wire 16 ! data2 [15:0] $end
+$var wire 16 " data1 [15:0] $end
+$var reg 1 # clock $end
+$var reg 3 $ regDestination [2:0] $end
+$var reg 3 % regSource1 [2:0] $end
+$var reg 3 & regSource2 [2:0] $end
+$var reg 1 ' reset $end
+$var reg 16 ( writeData [15:0] $end
+$var reg 1 ) writeEnable $end
+$scope module myregisters $end
+$var wire 1 # clock $end
+$var wire 3 * regDestination [2:0] $end
+$var wire 3 + regSource1 [2:0] $end
+$var wire 3 , regSource2 [2:0] $end
+$var wire 1 ' reset $end
+$var wire 16 - writeData [15:0] $end
+$var wire 1 ) writeEnable $end
+$var wire 16 . data2 [15:0] $end
+$var wire 16 / data1 [15:0] $end
+$var integer 32 0 i [31:0] $end
+$scope task display_memory_content $end
+$var integer 32 1 f [31:0] $end
+$var integer 32 2 j [31:0] $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b1000 2
+b10000000000000000000000000000011 1
+b1000 0
+bx /
+bx .
+bx -
+bx ,
+bx +
+bx *
+0)
+bx (
+1'
+bx &
+bx %
+bx $
+1#
+bx "
+bx !
+$end
+#5
+0'
+0#
+#10
+1#
+#15
+1)
+b10001111111110 (
+b10001111111110 -
+b10 $
+b10 *
+0#
+#20
+1#
+#25
+0)
+0#
+#30
+1#
+#35
+b10001111111110 "
+b10001111111110 /
+b10 %
+b10 +
+0#
+#40
+1#
+#45
+b0 "
+b0 /
+b1000 2
+b100 %
+b100 +
+1)
+b110011110000001 (
+b110011110000001 -
+b100 $
+b100 *
+0#
+#50
+b110011110000001 "
+b110011110000001 /
+1#
+#55
+b1000 2
+0)
+0#
+#60
+1#
+#65
+1)
+b1111111111111111 (
+b1111111111111111 -
+b0 $
+b0 *
+0#
+#70
+1#
+#75
+0)
+0#
+#80
+1#
+#85
+b0 "
+b0 /
+b0 %
+b0 +
+0#
+#90
+1#
+#95
+0#
