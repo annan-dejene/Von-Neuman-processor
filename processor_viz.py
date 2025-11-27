@@ -33,6 +33,7 @@ class ProcessorViz(tk.Tk):
         self.reg_vars = {}
         self.mem_labels = []
         self.auto_refresh = False
+        self.show_hex = True  # Toggle state: True=Hex, False=Decimal
 
         # --- Custom Style Setup ---
         style = ttk.Style()
@@ -137,6 +138,12 @@ class ProcessorViz(tk.Tk):
             fill="x", pady=5
         )
 
+        # NEW BUTTON: Hex/Dec Toggle
+        self.fmt_btn = ttk.Button(
+            ctrl_frame, text="Format: Hex", command=self.toggle_format
+        )
+        self.fmt_btn.pack(fill="x", pady=5)
+
         # --- Right Panel: Memory Grid ---
         mem_frame_cont = ttk.LabelFrame(
             main_frame, text="Memory Map (256 Words)", padding=10
@@ -221,6 +228,24 @@ class ProcessorViz(tk.Tk):
     def on_canvas_resize(self, event):
         self.canvas.itemconfig(self.frame_id, width=event.width)
 
+    # --- Helper: Convert Hex String to Display String ---
+    def format_value(self, hex_str):
+        if not self.show_hex:
+            try:
+                # Convert 16-bit Hex to Signed Decimal
+                val = int(hex_str, 16)
+                if val >= 0x8000:
+                    val -= 0x10000  # Two's complement conversion
+                return str(val)
+            except:
+                return hex_str  # Fallback if parsing fails (e.g. "xxxx")
+        return hex_str
+
+    def toggle_format(self):
+        self.show_hex = not self.show_hex
+        self.fmt_btn.config(text="Format: Hex" if self.show_hex else "Format: Dec")
+        self.load_data()  # Reload to apply formatting
+
     def load_data(self):
         # Load Registers
         try:
@@ -231,9 +256,12 @@ class ProcessorViz(tk.Tk):
                         parts = line.strip().split(":")
                         if len(parts) == 2:
                             reg_idx = int(parts[0].replace("R", ""))
-                            val = parts[1].strip()
+                            raw_val = parts[1].strip()
+                            # Apply Format
+                            disp_val = self.format_value(raw_val)
+
                             if reg_idx in self.reg_vars:
-                                self.reg_vars[reg_idx].set(val)
+                                self.reg_vars[reg_idx].set(disp_val)
         except Exception as e:
             print(f"Error loading registers: {e}")
 
@@ -246,13 +274,14 @@ class ProcessorViz(tk.Tk):
                         parts = line.strip().split(":")
                         if len(parts) == 2:
                             addr = int(parts[0], 10)
-                            val = parts[1].strip()
+                            raw_val = parts[1].strip()
 
                             if 0 <= addr < 256:
                                 lbl = self.mem_labels[addr]
-                                lbl.config(text=val)
+                                # Apply Format
+                                lbl.config(text=self.format_value(raw_val))
 
-                                if val != "xxxx" and val != "0000":
+                                if raw_val != "xxxx":
                                     lbl.config(bg=COLORS["highlight_mem"], fg="white")
                                 else:
                                     lbl.config(bg="#F0F0F0", fg="#444")
@@ -275,8 +304,6 @@ class ProcessorViz(tk.Tk):
 
                                 # Highlight PC
                                 pc_int = int(curr_addr_hex, 16)
-                                # Clear previous highlights (simple reload)
-                                # Since we reload all mem cells above, just highlight current
                                 if 0 <= pc_int < 256:
                                     self.mem_labels[pc_int].config(
                                         bg=COLORS["highlight_pc"], fg="#000"
@@ -288,11 +315,6 @@ class ProcessorViz(tk.Tk):
 
         if self.auto_refresh:
             self.after(1000, self.load_data)
-
-    def toggle_auto_refresh(self):
-        self.auto_refresh = not self.auto_refresh
-        if self.auto_refresh:
-            self.load_data()
 
 
 if __name__ == "__main__":
